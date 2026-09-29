@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tam Günəş Sistemi - İnteraktiv Planetlər</title>
+    <style>
+        :root {
+            --bg-color: #0b0c1b;
+            --space-bg: radial-gradient(circle, #1a1c3b 0%, #080914 100%);
+            --panel-bg: rgba(20, 22, 45, 0.92);
+            --panel-border: rgba(255, 255, 255, 0.15);
+            --text-color: #ffffff;
+            --text-muted: #d0d5e0;
+            --accent-color: #ffcc00;
+            --label-color: #4da6ff;
+            --orbit-color: rgba(255, 255, 255, 0.15);
+            --lamp-color: #ffd700;
+            --lamp-glow: 0 0 15px #ffd700;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #020205;
+            --space-bg: radial-gradient(circle, #080811 0%, #010103 100%);
+            --panel-bg: rgba(8, 8, 16, 0.95);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --text-color: #ffffff;
+            --text-muted: #b0b5c0;
+            --accent-color: #ffaa00;
+            --label-color: #66b2ff;
+            --orbit-color: rgba(255, 255, 255, 0.07);
+            --lamp-color: #555566;
+            --lamp-glow: none;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            height: 100vh;
+            background-color: var(--bg-color);
+            background: var(--space-bg);
+            color: var(--text-color);
+            display: flex;
+            overflow: hidden;
+            position: relative;
+            transition: background 0.5s ease;
+        }
+
+        /* --- ANİMASİYALI LAMPA --- */
+        .lamp-container {
+            position: absolute;
+            top: 0;
+            left: 30px;
+            z-index: 40;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .lamp-wire {
+            width: 2px;
+            height: 50px;
+            background: #888;
+            transition: height 0.15s ease-out;
+        }
+
+        .lamp-head {
+            width: 26px;
+            height: 20px;
+            background: var(--lamp-color);
+            border-radius: 10px 10px 4px 4px;
+            box-shadow: var(--lamp-glow);
+            transition: background 0.3s, box-shadow 0.3s, transform 0.15s ease-out;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+        }
+
+        .lamp-handle {
+            width: 7px;
+            height: 7px;
+            background: #aaa;
+            border-radius: 50%;
+            margin-bottom: -10px;
+        }
+
+        .lamp-container.pull .lamp-wire { height: 75px; }
+        .lamp-container.pull .lamp-head { transform: translateY(25px); }
+
+        /* Dil Seçimi */
+        .language-select {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 30;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 8px;
+            outline: none;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .language-select option {
+            background: #0f0f1e;
+            color: #fff;
+        }
+
+        /* Kosmos Səhnəsi */
+        .space {
+            flex: 1;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Günəş */
+        .sun {
+            position: absolute;
+            width: 50px;
+            height: 50px;
+            background: radial-gradient(circle, #ffea00 0%, #ff8800 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 45px #ffaa00;
+            cursor: pointer;
+            z-index: 20;
+            pointer-events: auto;
+        }
+
+        .sun:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 60px #ffbb00;
+        }
+
+        /* Orbitlər - KLİKLƏRİ BLOKLAMASIN DEYƏ pointer-events: none */
+        .orbit {
+            position: absolute;
+            border: 1px dashed var(--orbit-color);
+            border-radius: 50%;
+            animation: rotate infinite linear;
+            transition: border-color 0.5s ease;
+            pointer-events: none; 
+        }
+
+        /* Planetlər - YALNIZ PLANETİN ÖZÜ KLİKLƏNSİN DEYƏ pointer-events: auto */
+        .planet {
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            pointer-events: auto;
+        }
+
+        .planet:hover {
+            transform: translateX(-50%) scale(1.5);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.9);
+        }
+
+        /* --- ORBİT VƏ PLANET ÖLÇÜLƏRİ --- */
+        .mercury-orbit { width: 90px; height: 90px; animation-duration: 5s; z-index: 18; }
+        .mercury { width: 10px; height: 10px; background: #a5a5a5; top: -5px; }
+
+        .venus-orbit { width: 140px; height: 140px; animation-duration: 9s; z-index: 17; }
+        .venus { width: 14px; height: 14px; background: #e3bb76; top: -7px; }
+
+        .earth-orbit { width: 200px; height: 200px; animation-duration: 14s; z-index: 16; }
+        .earth { width: 16px; height: 16px; background: #2b82c5; box-shadow: 0 0 6px #2b82c5; top: -8px; }
+
+        .mars-orbit { width: 260px; height: 260px; animation-duration: 19s; z-index: 15; }
+        .mars { width: 12px; height: 12px; background: #c1440e; top: -6px; }
+
+        .jupiter-orbit { width: 340px; height: 340px; animation-duration: 30s; z-index: 14; }
+        .jupiter { width: 28px; height: 28px; background: radial-gradient(circle, #d4a373, #a36d39); top: -14px; }
+
+        .saturn-orbit { width: 440px; height: 440px; animation-duration: 45s; z-index: 13; }
+        .saturn { width: 22px; height: 22px; background: #e2bf7d; top: -11px; }
+        
+        .saturn::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 36px;
+            height: 10px;
+            border: 2px solid rgba(226, 191, 125, 0.7);
+            border-radius: 50%;
+            transform: translate(-50%, -50%) rotate(-20deg);
+            pointer-events: none;
+        }
+
+        .uranus-orbit { width: 530px; height: 530px; animation-duration: 60s; z-index: 12; }
+        .uranus { width: 18px; height: 18px; background: #70d6ff; top: -9px; }
+
+        .neptune-orbit { width: 620px; height: 620px; animation-duration: 80s; z-index: 11; }
+        .neptune { width: 17px; height: 17px; background: #3a86ff; top: -9px; }
+
+        /* Fırlanma */
+        @keyframes rotate {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .paused { animation-play-state: paused !important; }
+
+        /* Məlumat Paneli */
+        .info-panel {
+            width: 320px;
+            background: var(--panel-bg);
+            backdrop-filter: blur(12px);
+            border-left: 1px solid var(--panel-border);
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            box-shadow: -5px 0 20px rgba(0,0,0,0.6);
+            transform: translateX(100%);
+            transition: transform 0.4s ease-in-out, background 0.5s ease;
+            position: absolute;
+            right: 0;
+            top: 0;
+            height: 100%;
+            z-index: 50;
+        }
+
+        .info-panel.active { transform: translateX(0); }
+
+        .close-btn {
+            align-self: flex-end;
+            background: none;
+            border: none;
+            color: #aaa;
+            font-size: 20px;
+            cursor: pointer;
+        }
+
+        .close-btn:hover { color: var(--text-color); }
+
+        .planet-title {
+            font-size: 24px;
+            color: var(--accent-color);
+            border-bottom: 2px solid rgba(255, 204, 0, 0.3);
+            padding-bottom: 8px;
+        }
+
+        .info-item {
+            font-size: 14px;
+            line-height: 1.6;
+            color: var(--text-muted);
+        }
+
+        .info-item span.label { font-weight: bold; color: var(--label-color); }
+        .info-item span.value { color: var(--text-color); }
+    </style>
+</head>
+<body data-theme="light">
+
+    <!-- Animasiyalı Lampa Switç -->
+    <div class="lamp-container" id="lampBtn" onclick="toggleTheme()" title="Rejimi Dəyiş">
+        <div class="lamp-wire"></div>
+        <div class="lamp-head">
+            <div class="lamp-handle"></div>
+        </div>
+    </div>
+
+    <!-- Dil Seçimi -->
+    <select class="language-select" id="langSelect" onchange="changeLanguage()">
+        <option value="az">🇦🇿 Azərbaycan</option>
+        <option value="tr">🇹🇷 Türkçe</option>
+        <option value="en">🇬🇧 English</option>
+    </select>
+
+    <!-- Kosmos Səhnəsi (8 Planet + Günəş) -->
+    <div class="space">
+        <div class="sun" onclick="showInfo('sun')" title="Günəş"></div>
+
+        <div class="orbit mercury-orbit"><div class="planet mercury" onclick="showInfo('mercury')" title="Merkuri"></div></div>
+        <div class="orbit venus-orbit"><div class="planet venus" onclick="showInfo('venus')" title="Venera"></div></div>
+        <div class="orbit earth-orbit"><div class="planet earth" onclick="showInfo('earth')" title="Yer Kürəsi"></div></div>
+        <div class="orbit mars-orbit"><div class="planet mars" onclick="showInfo('mars')" title="Mars"></div></div>
+        <div class="orbit jupiter-orbit"><div class="planet jupiter" onclick="showInfo('jupiter')" title="Yupiter"></div></div>
+        <div class="orbit saturn-orbit"><div class="planet saturn" onclick="showInfo('saturn')" title="Saturn"></div></div>
+        <div class="orbit uranus-orbit"><div class="planet uranus" onclick="showInfo('uranus')" title="Uran"></div></div>
+        <div class="orbit neptune-orbit"><div class="planet neptune" onclick="showInfo('neptune')" title="Neptun"></div></div>
+    </div>
+
+    <!-- Məlumat Paneli -->
+    <div class="info-panel" id="infoPanel">
+        <button class="close-btn" onclick="closeInfo()">✖</button>
+        <h2 class="planet-title" id="planetName">Planet</h2>
+        <div class="info-item"><span class="label" id="lblType">Növü:</span> <span class="value" id="planetType">-</span></div>
+        <div class="info-item"><span class="label" id="lblDistance">Məsafə:</span> <span class="value" id="planetDistance">-</span></div>
+        <div class="info-item"><span class="label" id="lblTemp">Temperatur:</span> <span class="value" id="planetTemp">-</span></div>
+        <div class="info-item" id="planetDesc">-</div>
+    </div>
+
+    <script>
+        let currentLang = 'az';
+        let currentPlanetKey = null;
+
+        const labels = {
+            az: { type: "Növü:", distance: "Günəşdən Məsafə:", temp: "Temperatur:" },
+            tr: { type: "Türü:", distance: "Güneşe Uzaklık:", temp: "Sıcaklık:" },
+            en: { type: "Type:", distance: "Distance from Sun:", temp: "Temperature:" }
+        };
+
+        const planetsData = {
+            sun: {
+                az: { name: "Günəş", type: "Ulduz", distance: "0 km", temp: "~5,500 °C", desc: "Günəş sisteminin mərkəzində yerləşən və ümumi kütlənin 99.8%-ni təşkil edən sarı cırtdan ulduzdur." },
+                tr: { name: "Güneş", type: "Yıldız", distance: "0 km", temp: "~5,500 °C", desc: "Güneş sisteminin merkezinde yer alan ve toplam kütlenin %99.8'ini oluşturan sarı cüce yıldızdır." },
+                en: { name: "Sun", type: "Star", distance: "0 km", temp: "~5,500 °C", desc: "The star at the center of the Solar System, accounting for 99.8% of its total mass." }
+            },
+            mercury: {
+                az: { name: "Merkuri", type: "Qayalıq Planet", distance: "57.9 mln km", temp: "167 °C", desc: "Günəşə ən yaxın və Günəş sisteminin ən kiçik planetidir. Atmosferi demək olar ki, yoxdur." },
+                tr: { name: "Merkür", type: "Kasal Gezegen", distance: "57.9 mil km", temp: "167 °C", desc: "Güneş'e en yakın ve Güneş sisteminin en küçük gezegenidir. Atmosferi yok denecek kadar incedir." },
+                en: { name: "Mercury", type: "Terrestrial Planet", distance: "57.9 million km", temp: "167 °C", desc: "The smallest planet in the Solar System and the closest to the Sun." }
+            },
+            venus: {
+                az: { name: "Venera", type: "Qayalıq Planet", distance: "108.2 mln km", temp: "464 °C", desc: "Qalın karbon-dioksid atmosferinin yaratdığı parnik effekti səbəbindən sistemin ən isti planetidir." },
+                tr: { name: "Venüs", type: "Kasal Gezegen", distance: "108.2 mil km", temp: "464 °C", desc: "Yoğun sera etkisi nedeniyle Güneş sisteminin en sıcak gezegenidir." },
+                en: { name: "Venus", type: "Terrestrial Planet", distance: "108.2 million km", temp: "464 °C", desc: "The hottest planet in the solar system due to its dense atmosphere and greenhouse effect." }
+            },
+            earth: {
+                az: { name: "Yer Kürəsi", type: "Qayalıq Planet", distance: "149.6 mln km", temp: "15 °C", desc: "Üzərində həyat olduğu məlum olan yeganə səma cismidir. Səthinin 71%-i su ilə örtülüdür." },
+                tr: { name: "Dünya", type: "Kasal Gezegen", distance: "149.6 mil km", temp: "15 °C", desc: "Üzerinde yaşam olduğu bilinen tek gök cismidir. Yüzeyinin %71'i sularla kaplıdır." },
+                en: { name: "Earth", type: "Terrestrial Planet", distance: "149.6 million km", temp: "15 °C", desc: "The third planet from the Sun and the only astronomical object known to harbor life." }
+            },
+            mars: {
+                az: { name: "Mars", type: "Qayalıq Planet", distance: "227.9 mln km", temp: "-65 °C", desc: "Səthindəki dəmir oksid (pas) görə 'Qırmızı Planet' adlanır. İki kiçik peyki var: Fobos və Deimos." },
+                tr: { name: "Mars", type: "Kasal Gezegen", distance: "227.9 mil km", temp: "-65 °C", desc: "Yüzeyindeki demir oksit nedeniyle 'Kızıl Gezegen' olarak bilinir. İki küçük uydusu vardır." },
+                en: { name: "Mars", type: "Terrestrial Planet", distance: "227.9 million km", temp: "-65 °C", desc: "Known as the 'Red Planet' due to iron oxide on its surface. It has two small moons." }
+            },
+            jupiter: {
+                az: { name: "Yupiter", type: "Qaz Nəhəngi", distance: "778.5 mln km", temp: "-110 °C", desc: "Günəş sisteminin ən böyük planetidir. Ən böyük peyki Qanimeddir və böyük Qırmızı Ləkəsi ilə məşhurdur." },
+                tr: { name: "Jüpiter", type: "Gaz Devi", distance: "778.5 mil km", temp: "-110 °C", desc: "Güneş sisteminin en büyük gezegenidir. Dev Büyük Kırmızı Leke fırtınası ile tanınır." },
+                en: { name: "Jupiter", type: "Gas Giant", distance: "778.5 million km", temp: "-110 °C", desc: "The largest planet in the Solar System, famous for its Great Red Spot storm." }
+            },
+            saturn: {
+                az: { name: "Saturn", type: "Qaz Nəhəngi", distance: "1.43 mlrd km", temp: "-140 °C", desc: "Buz və toz zərrəciklərindən ibarət möhtəşəm və parlaq halqa sistemi ilə məşhurdur." },
+                tr: { name: "Satürn", type: "Gaz Devi", distance: "1.43 mlr km", temp: "-140 °C", desc: "Buz ve toz parçacıklarından oluşan görkemli halkalarıyla bilinen en büyük ikinci gezegendir." },
+                en: { name: "Saturn", type: "Gas Giant", distance: "1.43 billion km", temp: "-140 °C", desc: "Famous for its complex, bright ring system made mostly of ice particles and dust." }
+            },
+            uranus: {
+                az: { name: "Uran", type: "Buz Nəhəngi", distance: "2.87 mlrd km", temp: "-195 °C", desc: "Eksən əyriliyi 98 dərəcə olduğu üçün sanki 'yan üstə' fırlanan buz nəhəngidir." },
+                tr: { name: "Uranüs", type: "Buz Devi", distance: "2.87 mlr km", temp: "-195 °C", desc: "Eksen eğikliği nedeniyle yörüngesinde 'yan yatarak' dönen buz devidir." },
+                en: { name: "Uranus", type: "Ice Giant", distance: "2.87 billion km", temp: "-195 °C", desc: "An ice giant planet that uniquely rotates nearly on its side due to extreme axial tilt." }
+            },
+            neptune: {
+                az: { name: "Neptun", type: "Buz Nəhəngi", distance: "4.50 mlrd km", temp: "-200 °C", desc: "Günəşə ən uzaq planetdir. Tünd göy rəngi və saatda 2100 km-ə çatan şiddətli küləkləri ilə seçilir." },
+                tr: { name: "Neptün", type: "Buz Devi", distance: "4.50 mlr km", temp: "-200 °C", desc: "Güneş'e en uzak gezegendir. Derin mavi rengi ve çok güçlü rüzgarlarıyla tanınır." },
+                en: { name: "Neptune", type: "Ice Giant", distance: "4.50 billion km", temp: "-200 °C", desc: "The most distant planet from the Sun, known for its intense blue color and supersonic winds." }
+            }
+        };
+
+        const orbits = document.querySelectorAll('.orbit');
+        const infoPanel = document.getElementById('infoPanel');
+        const lampBtn = document.getElementById('lampBtn');
+
+        function toggleTheme() {
+            lampBtn.classList.add('pull');
+            setTimeout(() => lampBtn.classList.remove('pull'), 200);
+
+            const body = document.body;
+            const newTheme = body.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+            body.setAttribute('data-theme', newTheme);
+        }
+
+        function showInfo(planetKey) {
+            currentPlanetKey = planetKey;
+            updatePanelContent();
+            infoPanel.classList.add('active');
+            orbits.forEach(orbit => orbit.classList.add('paused'));
+        }
+
+        function updatePanelContent() {
+            if (!currentPlanetKey) return;
+
+            const data = planetsData[currentPlanetKey][currentLang];
+            const lbl = labels[currentLang];
+
+            document.getElementById('lblType').innerText = lbl.type;
+            document.getElementById('lblDistance').innerText = lbl.distance;
+            document.getElementById('lblTemp').innerText = lbl.temp;
+
+            document.getElementById('planetName').innerText = data.name;
+            document.getElementById('planetType').innerText = data.type;
+            document.getElementById('planetDistance').innerText = data.distance;
+            document.getElementById('planetTemp').innerText = data.temp;
+            document.getElementById('planetDesc').innerText = data.desc;
+        }
+
+        function changeLanguage() {
+            currentLang = document.getElementById('langSelect').value;
+            updatePanelContent();
+        }
+
+        function closeInfo() {
+            infoPanel.classList.remove('active');
+            orbits.forEach(orbit => orbit.classList.remove('paused'));
+        }
+    </script>
+</body>
+</html>
